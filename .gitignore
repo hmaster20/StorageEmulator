@@ -1,3 +1,6 @@
 ConsoleHDDemulator/obj/
 ConsoleHDDemulator/bin/
 .vs/
+*.zip
+DiscUtils/
+Visual Studio 2017/
