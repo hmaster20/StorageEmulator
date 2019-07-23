@@ -17,6 +17,10 @@ https://social.msdn.microsoft.com/Forums/vstudio/en-US/9466f70b-d0b6-499a-b9de-f
 
 https://stackoverflow.com/questions/3753758/creating-virtual-hard-drive
 
+https://dokan-dev.github.io
+
+https://github.com/bobvanderlinden/sharpfilesystem
+
 
 
 

@@ -1,5 +1,9 @@
-﻿using System;
+﻿using Microsoft.Win32.SafeHandles;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 
 namespace ConsoleHDDemulator
 {
@@ -66,5 +70,137 @@ namespace ConsoleHDDemulator
                 adjustedSize,
                 SizeSuffixes[mag]);
         }
+
+
+        static public void CopyFolder(string sourceFolder, string destFolder)
+        {
+            if (!Directory.Exists(destFolder))
+                Directory.CreateDirectory(destFolder);
+            string[] files = Directory.GetFiles(sourceFolder);
+            foreach (string file in files)
+            {
+                string name = Path.GetFileName(file);
+                string dest = Path.Combine(destFolder, name);
+                File.Copy(file, dest);
+            }
+            string[] folders = Directory.GetDirectories(sourceFolder);
+            foreach (string folder in folders)
+            {
+                string name = Path.GetFileName(folder);
+                string dest = Path.Combine(destFolder, name);
+                CopyFolder(folder, dest);
+            }
+        }
+
+
+
+        //DirectoryInfo src = new DirectoryInfo(@"C:\temp");
+        //DirectoryInfo dst = new DirectoryInfo(@"C:\temp3");
+        ///*
+        // * My example NCR.txt
+        // *     *.txt
+        // *     a.lbl
+        // */
+        //CopyFiles(src, dst, true);
+
+        static void CopyFiles(DirectoryInfo source, DirectoryInfo destination, bool overwrite)
+        {
+            List<FileInfo> files = new List<FileInfo>();
+
+            string[] fileNames = File.ReadAllLines("C:\\NCR.txt");
+
+            foreach (string f in fileNames)
+            {
+                files.AddRange(source.GetFiles(f));
+            }
+
+            if (!destination.Exists)
+                destination.Create();
+
+            foreach (FileInfo file in files)
+            {
+                file.CopyTo(destination.FullName + @"\" + file.Name, overwrite);
+            }
+        }
+
+
+
+
+
+
+        protected virtual bool IsFileLocked(FileInfo file)
+        {
+            FileStream stream = null;
+
+            try
+            {
+                stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+            }
+            catch (IOException)
+            {
+                //the file is unavailable because it is:
+                //still being written to
+                //or being processed by another thread
+                //or does not exist (has already been processed)
+                return true;
+            }
+            finally
+            {
+                if (stream != null)
+                    stream.Close();
+            }
+
+            //file is not locked
+            return false;
+        }
+
+
+
+
+
+
+        /// The common managed way to check whether a file is in use is to open the file in a try block. If the file is in use, it will throw an IOException.
+        public bool IsFileLocked(string filename)
+        {
+            bool Locked = false;
+            try
+            {
+                FileStream fs = File.Open(filename, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                fs.Close();
+            }
+            catch (IOException ex)
+            {
+                Locked = true;
+            }
+            return Locked;
+        }
+
+
+        /// <summary>Another way to check whether a file is in use is to call the CreateFile API. If a file is in use, the handle return is invalid.</summary>
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern SafeFileHandle CreateFile(string lpFileName,
+            FileSystemRights dwDesiredAccess, FileShare dwShareMode, IntPtr securityAttrs,
+            FileMode dwCreationDisposition, FileOptions dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+        const int ERROR_SHARING_VIOLATION = 32;
+
+        private bool IsFileInUse(string fileName)
+        {
+            bool inUse = false;
+
+            SafeFileHandle fileHandle =
+            CreateFile(fileName, FileSystemRights.Modify, FileShare.Write, IntPtr.Zero, FileMode.OpenOrCreate, FileOptions.None, IntPtr.Zero);
+
+            if (fileHandle.IsInvalid)
+            {
+                if (Marshal.GetLastWin32Error() == ERROR_SHARING_VIOLATION)
+                {
+                    inUse = true;
+                }
+            }
+            fileHandle.Close();
+            return inUse;
+        }
+
     }
 }
